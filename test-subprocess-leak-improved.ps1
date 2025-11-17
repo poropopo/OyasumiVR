@@ -101,15 +101,18 @@ function Show-CefSharpSubprocesses {
 
 # ダミーの親プロセスを作成（リリースモード用）
 function Start-DummyParentProcess {
-    $script = @'
-Write-Host "Dummy parent process started (PID: $PID)"
-Write-Host "Press Ctrl+C to stop"
-while ($true) {
-    Start-Sleep -Seconds 1
-}
-'@
+    # エンコードされたコマンドを使用してPowerShell変数の展開問題を回避
+    $scriptBlock = {
+        Write-Host "Dummy parent process started (PID: $PID)"
+        Write-Host "Press Ctrl+C to stop"
+        while ($true) {
+            Start-Sleep -Seconds 1
+        }
+    }
 
-    $process = Start-Process powershell -ArgumentList "-NoExit", "-Command", $script -PassThru -WindowStyle Minimized
+    $encodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($scriptBlock.ToString()))
+
+    $process = Start-Process powershell -ArgumentList "-NoExit", "-EncodedCommand", $encodedCommand -PassThru -WindowStyle Minimized
     Start-Sleep -Seconds 2
     return $process
 }
