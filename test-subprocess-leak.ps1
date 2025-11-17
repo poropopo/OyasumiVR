@@ -1,5 +1,5 @@
 # CefSharp Subprocess Leak Test Script
-# このスクリプトはoyasumivr-overlay-sidecar.exeを起動し、強制終了後にサブプロセスが残るかをテストします
+# This script launches oyasumivr-overlay-sidecar.exe and checks whether any subprocesses remain after a forced termination.
 
 param(
     [string]$ExePath = ".\src-overlay-sidecar\bin\Debug\net8.0-windows\oyasumivr-overlay-sidecar.exe",
@@ -8,7 +8,7 @@ param(
     [switch]$CleanupOnly
 )
 
-# 色付き出力用の関数
+# Helper for colored output
 function Write-ColorOutput {
     param(
         [string]$Message,
@@ -22,53 +22,53 @@ function Write-Error { param([string]$Message) Write-ColorOutput "✗ $Message" 
 function Write-Warning { param([string]$Message) Write-ColorOutput "⚠ $Message" "Yellow" }
 function Write-Info { param([string]$Message) Write-ColorOutput "ℹ $Message" "Cyan" }
 
-# CefSharpサブプロセスをすべてクリーンアップ
+# Clean up all CefSharp subprocesses
 function Cleanup-CefSharpProcesses {
-    Write-Info "CefSharpサブプロセスをクリーンアップ中..."
+    Write-Info "Cleaning up CefSharp subprocesses..."
 
     $cefProcesses = Get-Process | Where-Object { $_.ProcessName -like "*CefSharp*" -or $_.ProcessName -like "*cefsharp*" }
 
     if ($cefProcesses) {
         foreach ($proc in $cefProcesses) {
             try {
-                Write-Warning "  プロセスを終了: $($proc.ProcessName) (PID: $($proc.Id))"
+                Write-Warning "  Terminating process: $($proc.ProcessName) (PID: $($proc.Id))"
                 Stop-Process -Id $proc.Id -Force -ErrorAction Stop
             }
             catch {
-                Write-Error "  プロセス終了失敗: $($proc.ProcessName) (PID: $($proc.Id))"
+                Write-Error "  Failed to terminate process: $($proc.ProcessName) (PID: $($proc.Id))"
             }
         }
         Start-Sleep -Seconds 1
     }
     else {
-        Write-Success "CefSharpサブプロセスは見つかりませんでした"
+        Write-Success "No CefSharp subprocesses were found"
     }
 }
 
-# オーバーレイサイドカープロセスをクリーンアップ
+# Clean up overlay sidecar processes
 function Cleanup-SidecarProcesses {
-    Write-Info "オーバーレイサイドカープロセスをクリーンアップ中..."
+    Write-Info "Cleaning up overlay sidecar processes..."
 
     $sidecarProcesses = Get-Process | Where-Object { $_.ProcessName -like "*oyasumivr-overlay-sidecar*" }
 
     if ($sidecarProcesses) {
         foreach ($proc in $sidecarProcesses) {
             try {
-                Write-Warning "  プロセスを終了: $($proc.ProcessName) (PID: $($proc.Id))"
+                Write-Warning "  Terminating process: $($proc.ProcessName) (PID: $($proc.Id))"
                 Stop-Process -Id $proc.Id -Force -ErrorAction Stop
             }
             catch {
-                Write-Error "  プロセス終了失敗: $($proc.ProcessName) (PID: $($proc.Id))"
+                Write-Error "  Failed to terminate process: $($proc.ProcessName) (PID: $($proc.Id))"
             }
         }
         Start-Sleep -Seconds 1
     }
     else {
-        Write-Success "オーバーレイサイドカープロセスは見つかりませんでした"
+        Write-Success "No overlay sidecar processes were found"
     }
 }
 
-# サブプロセスの数を取得
+# Get the number of subprocesses
 function Get-CefSharpSubprocessCount {
     $processes = Get-Process | Where-Object {
         $_.ProcessName -like "*CefSharp.BrowserSubprocess*" -or
@@ -77,7 +77,7 @@ function Get-CefSharpSubprocessCount {
     return $processes.Count
 }
 
-# サブプロセスの詳細を表示
+# Display subprocess details
 function Show-CefSharpSubprocesses {
     $processes = Get-Process | Where-Object {
         $_.ProcessName -like "*CefSharp*" -or
@@ -85,7 +85,7 @@ function Show-CefSharpSubprocesses {
     }
 
     if ($processes) {
-        Write-Warning "検出されたCefSharpプロセス:"
+        Write-Warning "Detected CefSharp processes:"
         foreach ($proc in $processes) {
             $memoryMB = [math]::Round($proc.WorkingSet64 / 1MB, 2)
             Write-Host "  - $($proc.ProcessName) (PID: $($proc.Id), Memory: $memoryMB MB)" -ForegroundColor Yellow
@@ -93,100 +93,100 @@ function Show-CefSharpSubprocesses {
         return $processes.Count
     }
     else {
-        Write-Success "CefSharpプロセスは見つかりませんでした"
+        Write-Success "No CefSharp processes were found"
         return 0
     }
 }
 
-# メイン処理
+# Main processing
 function Test-SubprocessLeak {
     param([int]$Iteration)
 
     Write-Host "`n========================================" -ForegroundColor Magenta
-    Write-Host "テスト実行 #$Iteration" -ForegroundColor Magenta
+    Write-Host "Test Run #$Iteration" -ForegroundColor Magenta
     Write-Host "========================================`n" -ForegroundColor Magenta
 
-    # 1. 初期クリーンアップ
-    Write-Info "[ステップ 1] 既存プロセスのクリーンアップ"
+    # 1. Initial cleanup
+    Write-Info "[Step 1] Cleaning up existing processes"
     Cleanup-SidecarProcesses
     Cleanup-CefSharpProcesses
     Write-Host ""
 
-    # 2. 実行ファイルの存在確認
-    Write-Info "[ステップ 2] 実行ファイルの確認"
+    # 2. Verify executable
+    Write-Info "[Step 2] Validating executable"
     if (-not (Test-Path $ExePath)) {
-        Write-Error "実行ファイルが見つかりません: $ExePath"
+        Write-Error "Executable not found: $ExePath"
         return $false
     }
     $fullPath = Resolve-Path $ExePath
-    Write-Success "実行ファイル: $fullPath"
+    Write-Success "Executable: $fullPath"
     Write-Host ""
 
-    # 3. プロセス起動
-    Write-Info "[ステップ 3] oyasumivr-overlay-sidecar.exe を起動"
+    # 3. Launch process
+    Write-Info "[Step 3] Launching oyasumivr-overlay-sidecar.exe"
     try {
         $process = Start-Process -FilePath $fullPath -ArgumentList "dev" -PassThru -WindowStyle Hidden
-        Write-Success "プロセス起動成功 (PID: $($process.Id))"
+        Write-Success "Process launched successfully (PID: $($process.Id))"
     }
     catch {
-        Write-Error "プロセス起動失敗: $_"
+        Write-Error "Process launch failed: $_"
         return $false
     }
     Write-Host ""
 
-    # 4. 待機（CefSharpの初期化を待つ）
-    Write-Info "[ステップ 4] CefSharpの初期化を待機中 ($WaitSeconds 秒)"
+    # 4. Wait (allow CefSharp to initialize)
+    Write-Info "[Step 4] Waiting for CefSharp initialization ($WaitSeconds seconds)"
     for ($i = $WaitSeconds; $i -gt 0; $i--) {
-        Write-Host "  残り $i 秒..." -NoNewline
+        Write-Host "  $i seconds remaining..." -NoNewline
         Start-Sleep -Seconds 1
         Write-Host "`r" -NoNewline
     }
-    Write-Host "  完了                "
+    Write-Host "  Done                "
 
-    # 4.5. 起動後のプロセス確認
+    # 4.5. Check processes after launch
     $beforeCount = Get-CefSharpSubprocessCount
-    Write-Info "起動後のCefSharpサブプロセス数: $beforeCount"
+    Write-Info "CefSharp subprocess count after launch: $beforeCount"
     Write-Host ""
 
-    # 5. プロセスの強制終了
-    Write-Info "[ステップ 5] プロセスを強制終了"
+    # 5. Force terminate the process
+    Write-Info "[Step 5] Forcing process shutdown"
     try {
         Stop-Process -Id $process.Id -Force -ErrorAction Stop
-        Write-Warning "メインプロセスを強制終了しました (PID: $($process.Id))"
+        Write-Warning "Main process force-terminated (PID: $($process.Id))"
     }
     catch {
-        Write-Error "プロセス終了失敗: $_"
+        Write-Error "Process termination failed: $_"
         return $false
     }
     Write-Host ""
 
-    # 6. 少し待機（プロセスが完全に終了するまで）
-    Write-Info "[ステップ 6] プロセス終了を待機中 (2秒)"
+    # 6. Wait briefly (ensure process fully exits)
+    Write-Info "[Step 6] Waiting for process exit (2 seconds)"
     Start-Sleep -Seconds 2
     Write-Host ""
 
-    # 7. サブプロセスのチェック
-    Write-Info "[ステップ 7] CefSharpサブプロセスをチェック"
+    # 7. Check subprocesses
+    Write-Info "[Step 7] Checking CefSharp subprocesses"
     $leakedCount = Show-CefSharpSubprocesses
     Write-Host ""
 
-    # 8. 結果判定
+    # 8. Evaluate results
     Write-Host "========================================" -ForegroundColor Magenta
-    Write-Host "テスト結果 #$Iteration" -ForegroundColor Magenta
+    Write-Host "Test Results #$Iteration" -ForegroundColor Magenta
     Write-Host "========================================" -ForegroundColor Magenta
 
     if ($leakedCount -gt 0) {
-        Write-Error "失敗: $leakedCount 個のCefSharpサブプロセスが残っています"
-        Write-Warning "これはメモリリーク/プロセスリークの証拠です"
+        Write-Error "Failure: $leakedCount CefSharp subprocess(es) remain"
+        Write-Warning "This indicates a memory/process leak"
         return $false
     }
     else {
-        Write-Success "成功: サブプロセスは適切にクリーンアップされました"
+        Write-Success "Success: All subprocesses were cleaned up"
         return $true
     }
 }
 
-# スクリプト実行開始
+# Script execution entry point
 Write-Host @"
 
 ╔═══════════════════════════════════════════════════════╗
@@ -196,22 +196,22 @@ Write-Host @"
 
 "@ -ForegroundColor Cyan
 
-Write-Info "設定:"
-Write-Host "  実行ファイル: $ExePath"
-Write-Host "  待機時間: $WaitSeconds 秒"
-Write-Host "  テスト回数: $TestIterations"
+Write-Info "Configuration:"
+Write-Host "  Executable: $ExePath"
+Write-Host "  Wait time: $WaitSeconds seconds"
+Write-Host "  Test iterations: $TestIterations"
 Write-Host ""
 
-# クリーンアップのみモード
+# Cleanup-only mode
 if ($CleanupOnly) {
-    Write-Warning "クリーンアップモードで実行中..."
+    Write-Warning "Running in cleanup-only mode..."
     Cleanup-SidecarProcesses
     Cleanup-CefSharpProcesses
-    Write-Success "クリーンアップ完了"
+    Write-Success "Cleanup complete"
     exit 0
 }
 
-# テスト実行
+# Execute tests
 $successCount = 0
 $failCount = 0
 
@@ -226,28 +226,28 @@ for ($i = 1; $i -le $TestIterations; $i++) {
     }
 
     if ($i -lt $TestIterations) {
-        Write-Host "`n次のテストまで3秒待機..." -ForegroundColor Gray
+        Write-Host "`nWaiting 3 seconds before the next test..." -ForegroundColor Gray
         Start-Sleep -Seconds 3
     }
 }
 
-# 最終結果
+# Final results
 Write-Host "`n`n" -NoNewline
 Write-Host "╔═══════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║   最終結果                                            ║" -ForegroundColor Cyan
+Write-Host "║   Final Results                                       ║" -ForegroundColor Cyan
 Write-Host "╚═══════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "総テスト数: $TestIterations" -ForegroundColor White
-Write-Success "成功: $successCount"
-Write-Error "失敗: $failCount"
+Write-Host "Total tests: $TestIterations" -ForegroundColor White
+Write-Success "Passes: $successCount"
+Write-Error "Failures: $failCount"
 Write-Host ""
 
 if ($failCount -gt 0) {
-    Write-Error "サブプロセスリークが検出されました！"
-    Write-Warning "修正が必要です。"
+    Write-Error "Subprocess leaks were detected!"
+    Write-Warning "Remediation required."
     exit 1
 }
 else {
-    Write-Success "すべてのテストが成功しました！"
+    Write-Success "All tests completed successfully!"
     exit 0
 }
