@@ -10,6 +10,8 @@ namespace overlay_sidecar;
 public static class Program {
   public static bool GpuAccelerated = true;
   public static SidecarMode Mode = SidecarMode.Release;
+  private static bool _isShuttingDown = false;
+  private static readonly object _shutdownLock = new object();
 
   public static void Main(string[] args)
   {
@@ -67,6 +69,38 @@ public static class Program {
     Cef.Initialize(settings);
   }
 
+  public static void Shutdown(int exitCode = 0)
+  {
+    lock (_shutdownLock)
+    {
+      if (_isShuttingDown) return;
+      _isShuttingDown = true;
+    }
+
+    Log.Information("Starting graceful shutdown...");
+
+    try
+    {
+      // 1. すべてのブラウザインスタンスを破棄
+      Log.Information("Disposing all browser instances...");
+      BrowserManager.Instance.DisposeAll();
+
+      // 2. CefSharpをシャットダウン
+      Log.Information("Shutting down CefSharp...");
+      Cef.Shutdown();
+
+      Log.Information("Graceful shutdown completed.");
+    }
+    catch (Exception e)
+    {
+      Log.Error(e, "Error during shutdown");
+    }
+    finally
+    {
+      Environment.Exit(exitCode);
+    }
+  }
+
   private static void WatchMainProcess(int mainPid)
   {
     if (InDevMode()) return;
@@ -78,7 +112,7 @@ public static class Program {
     catch (ArgumentException)
     {
       Log.Error("Could not find main process to watch (pid=" + mainPid + "). Stopping overlay sidecar.");
-      Environment.Exit(1);
+      Shutdown(1);
       return;
     }
 
@@ -89,7 +123,7 @@ public static class Program {
         if (mainProcess.HasExited)
         {
           Log.Information("Main process has exited. Stopping overlay sidecar.");
-          Environment.Exit(0);
+          Shutdown(0);
           return;
         }
 

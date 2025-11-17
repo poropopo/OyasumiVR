@@ -81,14 +81,14 @@ public class IpcManager {
     if (!int.TryParse(grpcAddress.Split(':').Last(), out var grpcPort))
     {
       Log.Error("Cannot parse bound port for gRPC interface. Quitting...");
-      Environment.Exit(1);
+      Program.Shutdown(1);
       return;
     }
 
     if (!int.TryParse(grpcWebAddress.Split(':').Last(), out var grpcWebPort))
     {
       Log.Error("Cannot parse bound port for gRPC-Web interface. Quitting...");
-      Environment.Exit(1);
+      Program.Shutdown(1);
     }
 
     var channel = GrpcChannel.ForAddress($"http://127.0.0.1:{mainProcessPort}");
@@ -116,7 +116,7 @@ public class IpcManager {
         if (attempts > 5000 / interval)
         {
           Log.Error("Could not get HTTP server port from core. Quitting...");
-          Environment.Exit(1);
+          Program.Shutdown(1);
           break;
         }
 
@@ -138,7 +138,7 @@ public class IpcManager {
     catch (RpcException e)
     {
       Log.Error(e, "Cannot inform core of overlay sidecar start. Quitting...");
-      if (Program.InReleaseMode()) Environment.Exit(1);
+      if (Program.InReleaseMode()) Program.Shutdown(1);
     }
   }
 }

@@ -1,11 +1,13 @@
 using CefSharp;
 using overlay_sidecar.Browsers;
+using Serilog;
 
 namespace overlay_sidecar;
 
 public class BrowserManager {
   public static BrowserManager Instance { get; } = new();
   private List<CachedBrowser> _browsers = new();
+  private bool _disposed = false;
 
   private BrowserManager()
   {
@@ -20,6 +22,11 @@ public class BrowserManager {
   {
     lock (_browsers)
     {
+      if (_disposed)
+      {
+        throw new ObjectDisposedException("BrowserManager is already disposed");
+      }
+
       foreach (var cachedBrowser in _browsers)
       {
         if (cachedBrowser.IsFree && cachedBrowser.Width == width && cachedBrowser.Height == height)
@@ -51,6 +58,32 @@ public class BrowserManager {
           return;
         }
       }
+    }
+  }
+
+  public void DisposeAll()
+  {
+    lock (_browsers)
+    {
+      if (_disposed) return;
+      _disposed = true;
+
+      Log.Information($"Disposing {_browsers.Count} browser instances...");
+
+      foreach (var cachedBrowser in _browsers)
+      {
+        try
+        {
+          cachedBrowser.Browser.Dispose();
+        }
+        catch (Exception e)
+        {
+          Log.Warning(e, "Error disposing browser instance");
+        }
+      }
+
+      _browsers.Clear();
+      Log.Information("All browser instances disposed.");
     }
   }
 
