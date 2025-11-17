@@ -101,13 +101,13 @@ function Show-CefSharpSubprocesses {
 
 # ダミーの親プロセスを作成（リリースモード用）
 function Start-DummyParentProcess {
-    $script = @"
-Write-Host "Dummy parent process started (PID: `$PID)"
+    $script = @'
+Write-Host "Dummy parent process started (PID: $PID)"
 Write-Host "Press Ctrl+C to stop"
-while (`$true) {
+while ($true) {
     Start-Sleep -Seconds 1
 }
-"@
+'@
 
     $process = Start-Process powershell -ArgumentList "-NoExit", "-Command", $script -PassThru -WindowStyle Minimized
     Start-Sleep -Seconds 2
