@@ -54,6 +54,25 @@ public class BrowserManager {
     }
   }
 
+  public void DisposeAllBrowsers()
+  {
+    lock (_browsers)
+    {
+      foreach (var cachedBrowser in _browsers)
+      {
+        try
+        {
+          cachedBrowser.Browser.Dispose();
+        }
+        catch (Exception)
+        {
+          // Ignore disposal errors during shutdown
+        }
+      }
+      _browsers.Clear();
+    }
+  }
+
   class CachedBrowser {
     public OffscreenBrowser Browser;
     public bool IsFree;

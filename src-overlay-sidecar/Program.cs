@@ -10,6 +10,8 @@ namespace overlay_sidecar;
 public static class Program {
   public static bool GpuAccelerated = true;
   public static SidecarMode Mode = SidecarMode.Release;
+  private static bool _isShuttingDown = false;
+  private static readonly object _shutdownLock = new object();
 
   public static void Main(string[] args)
   {
@@ -47,6 +49,9 @@ public static class Program {
       GpuAccelerated = false;
     }
 
+    // Register shutdown handler
+    AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+
     // Initialize
     WatchMainProcess(mainProcessId);
     InitCef();
@@ -78,6 +83,7 @@ public static class Program {
     catch (ArgumentException)
     {
       Log.Error("Could not find main process to watch (pid=" + mainPid + "). Stopping overlay sidecar.");
+      Shutdown();
       Environment.Exit(1);
       return;
     }
@@ -89,6 +95,7 @@ public static class Program {
         if (mainProcess.HasExited)
         {
           Log.Information("Main process has exited. Stopping overlay sidecar.");
+          Shutdown();
           Environment.Exit(0);
           return;
         }
@@ -96,6 +103,41 @@ public static class Program {
         Thread.Sleep(1000);
       }
     }).Start();
+  }
+
+  private static void OnProcessExit(object? sender, EventArgs e)
+  {
+    Shutdown();
+  }
+
+  private static void Shutdown()
+  {
+    lock (_shutdownLock)
+    {
+      if (_isShuttingDown)
+        return;
+      
+      _isShuttingDown = true;
+      Log.Information("Starting cleanup process...");
+
+      try
+      {
+        // Dispose all cached browsers
+        BrowserManager.Instance.DisposeAllBrowsers();
+        
+        // Shutdown CEF
+        if (Cef.IsInitialized)
+        {
+          Log.Information("Shutting down CefSharp...");
+          Cef.Shutdown();
+          Log.Information("CefSharp shutdown complete.");
+        }
+      }
+      catch (Exception ex)
+      {
+        Log.Error(ex, "Error during shutdown");
+      }
+    }
   }
 
   public static bool InDevMode()
